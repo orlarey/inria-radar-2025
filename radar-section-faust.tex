@@ -18,7 +18,7 @@ The following sections present the work carried out during the period in each of
 
 \F{} is a synchronous functional programming language inspired by lambda-calculus, 
 combinatory logic and John Backus’ FP.
-It's semantics have traditionally centered on the concept of `audio
+It's semantics is centered on the concept of `audio
 circuits,' where each function or expression represents a component
 within a signal processing chain. Initially, the language served
 primarily to assemble these circuits, with computations processed at
@@ -115,80 +115,19 @@ efficiency of \F{}-generated code on hardware like FPGAs.
 
 \subparagraph{FIR/IIR reconstruction}
 
-By design, \F{} avoids providing high-level signal processing
-primitives like FIR and IIR filters or FFT operations, instead relying
-on more fundamental building blocks. This minimalist approach stems from
-the philosophy that such operations can be composed using \F{}'s core
-primitives, with the delay line being the only truly essential signal
-processing operation built into the language. While this works well for
-CPUs, where library-based, unrolled implementations of FIR and IIR
-filters perform efficiently, it can be less optimal on FPGAs programmed
-with high-level synthesis (HLS) tools, as fully unrolled code may lead
-to excessive hardware resource usage. To address this, the \F{}
-compiler now includes explicit FIR and IIR reconstruction, which
-reintroduces loops into the code, essentially reversing the unrolling
-process.
+Faust's design philosophy deliberately excludes high-level signal processing functions that can be expressed using existing lower-level primitives. Consequently, the language does not provide FIR and IIR filters as direct primitives, but instead includes them in its standard libraries.
 
-This approach provides a significant advantage over using pre-defined
-FIR and IIR primitives: the reconstructed filters are optimized
-automatically, containing no redundancies and requiring no further
-fusion of operations. This means that FIRs and IIRs are reconstructed as
-efficient, non-redundant loops, producing a streamlined and
-hardware-friendly representation within the compiler's intermediate
-signal model. This explicit reconstruction not only enhances resource
-management but also opens up new optimization opportunities in
-FPGA-targeted code generation.
+But, from a code generation perspective, having high-level operations like IIR and FIR filters can be beneficial. For example, this allows loops to appear in the generated code, which is particularly interesting when using high-level synthesis tools like Vivado HLS. Therefore, we introduced new compilation options that automatically reconstruct FIR and IIR filters in the compiler's internal representations. While these options may not necessarily improve CPU performance, they are clearly very efficient on FPGAs in terms of latency and resource trade-offs.
 
 \subparagraph{Delay lines}
 
-Delay lines, as previously discussed in the context of FIR and IIR
-reconstruction, are an essential operation in signal processing.
-However, delays are also a resource-intensive operation due to the
-frequent memory access required to store and retrieve past signal
-values. To address this, the \F{} compiler has developed improved
-strategies for generating delay lines, selecting an approach based on
-the maximum delay length and hardware efficiency considerations. For
-small delays, the compiler may opt for a straightforward strategy where
-past samples are stored in a simple array, accessing previous values as
-needed. When delays are longer but remain within a moderate range, the
-compiler uses a `copy delay' strategy, which copies values into a
-buffer, unrolling loops when beneficial to maximize CPU or FPGA
-performance. For very long delays, where memory and hardware resources
-are a concern, the compiler generates code for a `ring buffer,' a more
-resource-efficient structure that reuses buffer memory cyclically by
-indexing with modulo operations. This flexible approach to delay lines
-allows \F{} to adapt delay handling based on both the delay length and
-the target hardware, ensuring optimized performance across CPUs and
-FPGAs.
+We have developed new strategies for implementing delay lines, focusing on adapting implementation techniques based on delay length and hardware characteristics. The goal is to optimize memory usage, computational efficiency, and resource allocation across different platforms like CPUs and FPGAs. Our new approach dynamically selects implementation methods, from simple array storage for short delays, to ring buffer techniques for long delays - to maximize performance while minimizing resource overhead.
 
 \subparagraph{Instruction scheduling}
 
-An important advancement in the \F{} compiler is the implementation of
-optimized instruction scheduling strategies. At the intermediate signal
-level, each \F{} program is represented as a directed graph (DG) of
-signals, where nodes represent individual signals and edges denote
-dependencies between them. Edges are labeled to indicate the required
-timing of dependencies: for an \emph{immediate} dependency (where, for
-instance, signal \(x\) at time \(t\) depends on signal \(y\) at the same
-time \(t\)), the edge between \(x\) and \(y\) is labeled with 0.
-Conversely, if \(x\) at time \(t\) depends on a past value of \(y\)
-(such as \(y\) at \(t - 5\)), the edge is labeled with 5, representing a
-delayed dependency. By isolating only the immediate dependencies
-(removing edges with non-zero labels), \F{}'s semantics guarantee that
-the resulting graph is a Directed Acyclic Graph (DAG).
+At the intermediate signal level, each Faust program is represented as a directed graph (DG), where nodes correspond to individual signals, and edges represent their dependencies. Multiple topological orderings can satisfy the dependency constraints, but due to memory cache and data locality considerations, not all orderings are equally efficient.
 
-This DAG provides flexibility in code generation, as multiple
-topological orderings of instructions can satisfy dependency
-constraints. However, because of memory cache and data locality
-considerations, not all orderings are equally efficient. The \F{}
-compiler now includes multiple strategies to choose a topological
-ordering that minimizes memory usage, carefully selecting an ordering
-that reduces both the number and the duration of intermediate values
-that need to be held before they are used. By aligning signal
-computations with cache-friendly access patterns, these scheduling
-strategies improve performance significantly, making \F{} code
-generation not only correct but also optimized for modern hardware
-architectures.
+We have implemented several new scheduling strategies. Tests reveal that no single strategy consistently outperforms the others. However, the performance impact of the chosen strategy is often highly significant, underscoring the importance of allowing users to select their preferred scheduling method.
 
 \subparagraph{Backends}
 
