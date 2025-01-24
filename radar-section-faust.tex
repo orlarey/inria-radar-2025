@@ -1,246 +1,204 @@
 \subsection{The Faust Programming Language and its Ecosystem} {\bf Participants: \florent, \stephane, \romain,  \yann, \tanguy, \christine}
 
 
-Audio signal processing is an applied field where success is ultimately determined by the human ear, requiring advanced tools to prototype and implement algorithms rapidly and efficiently. The \F{} programming language and environment, developed at \gramecncm in 2002~\cite{orlarey2002}, represented a significant development by enabling researchers and developers to prototype and deploy audio processing algorithms more efficiently. At the time, \F{} was the first fully compiled audio programming language, which played an important role in making the field of real-time embedded audio systems more accessible.  
+Audio signal processing is an applied field where success is ultimately determined by the human ear, requiring advanced
+tools to prototype and implement algorithms rapidly and efficiently. The \F{} programming language and environment,
+developed at \gramecncm in 2002~\cite{orlarey2002}, represented a significant development by enabling researchers and
+developers to prototype and deploy audio processing algorithms more efficiently. At the time, \F{} was the first fully
+compiled audio programming language, which played an important role in making the field of real-time embedded audio
+systems more accessible.  
 
-Since its inception, \F{} has gained international recognition and is widely used in both academic and professional contexts. It has been adopted for teaching advanced topics such as signal processing and physical interaction design at Stanford University and for developing audio plugins~\cite{faustLibraries2019}.  
+Since its inception, \F{} has gained international recognition and is widely used in both academic and professional
+contexts. It has been adopted for teaching advanced topics such as signal processing and physical interaction design at
+Stanford University and for developing audio plugins~\cite{faustLibraries2019}.  
 
 Today, the Faust research project, conducted by \projectname, focuses on three interrelated areas:  
 \begin{itemize}
-    \item \textbf{The Programming Language}: Developing a high-level language for sound synthesis and signal processing that is accessible to non-computer scientists.
-    \item \textbf{The Compiler and Compilation Techniques}: Producing tools to automatically generate highly optimized code, comparable in efficiency to code written by experienced C programmers.
-    \item \textbf{The Ecosystem}: Expanding and maintaining architecture files (which allow the same Faust code to run on over twenty platforms), development tools, libraries, and documentation.
+    \item \textbf{The \F{} Programming Language}: Developing a high-level language for sound synthesis and signal processing
+    that is accessible to non-computer scientists.
+    \item \textbf{The Compiler and Compilation Techniques}: Producing tools to automatically generate highly optimized
+    code, comparable in efficiency to code written by experienced C programmers.
+    \item \textbf{The Ecosystem}: Expanding and maintaining architecture files (which allow the same Faust code to run
+    on over twenty platforms), development tools, libraries, and documentation.
 \end{itemize}  
 
 The following sections present the work carried out during the period in each of these areas.
 
 \paragraph{The \F{} programming language}
 
-\F{} is a synchronous functional programming language inspired by lambda-calculus, 
-combinatory logic and John Backus’ FP.
-It's semantics is centered on the concept of `audio
-circuits,' where each function or expression represents a component
-within a signal processing chain. Initially, the language served
-primarily to assemble these circuits, with computations processed at
-every sample to ensure sample-accurate processing. This approach, while
-effective, required continuous computation even when it wasn't strictly
-necessary. During the period, however, \F{} has evolved beyond circuit
-assembly: new primitive operations, such as ondemand and Widget
-Modulation, now allow users to transform circuits and selectively
-control when computations occur. These transformative features introduce
-a new level of control over signal flow, computation timing, and
-parameter modulation, making \F{} an even more flexible and powerful
-language for developing complex, interactive audio applications.
+\F{} is a synchronous functional programming language inspired by lambda calculus, combinatory logic, and John Backus'
+FP. Its semantics is centered around the concept of audio circuits. Programming in \F{} primarily involves constructing
+new audio circuits by assembling primitive ones using an algebra of five composition operations. During the period,
+however, \F{} has evolved beyond simple circuit assembly. The language has been extended with new primitive operations,
+such as \emph{Ondemand}, \emph{Widget Modulation} and \emph{Automatic Differentiation}, which provide users with new
+higher-order functions for manipulating audio circuits.
+
 
 \subparagraph{Widget Modulation}
 
-Building on this evolution, Widget Modulation introduces an innovative
-extension to \F{} that allows developers to modulate the values of user
-interface elements, or `widgets,' within an audio circuit without
-modifying the original code~\cite{orlarey:hal-04762253}. Inspired by the flexibility of modular
-synthesizers, this feature enables voltage-control-like modulation by
-specifying a modulation circuit that can dynamically adjust parameters.
-This post-development control promotes reuse and customization,
-enhancing \F{}'s modularity by allowing users to transform interface
-behaviors without altering underlying circuits. With various modulation
-techniques---additive, multiplicative, or widget replacement---Widget
-Modulation expands \F{}'s versatility, empowering developers to design
-intricate, interactive audio interfaces with ease.
+Building on this evolution, Widget Modulation introduces an innovative extension to \F{} that allows developers to
+modulate the values of user interface elements, or `widgets,' within an audio circuit without modifying the original
+code~\cite{orlarey:hal-04762253}. Inspired by the flexibility of modular synthesizers, this feature enables
+voltage-control-like modulation by specifying a modulation circuit that can dynamically adjust parameters. This
+post-development control promotes reuse and customization, enhancing \F{}'s modularity by allowing users to transform
+interface behaviors without altering underlying circuits. With various modulation techniques---additive, multiplicative,
+or widget replacement---Widget Modulation expands \F{}'s versatility, empowering developers to design intricate,
+interactive audio interfaces with ease.
 
-To achieve this, the \F{} compiler first evaluates the original circuit
-in a `normal form,' a flattened representation that standardizes the
-circuit's structure. Next, it identifies every point in the circuit
-where the target widget appears, systematically inserting modulation
-circuitry at each relevant location. This process effectively generates
-a new, fully modulated circuit that incorporates the specified
-modulation behavior, seamlessly embedding dynamic control within the
-audio flow.
+To achieve this, the \F{} compiler first evaluates the original circuit in a `normal form,' a flattened representation
+that standardizes the circuit's structure. Next, it identifies every point in the circuit where the target widget
+appears, systematically inserting modulation circuitry at each relevant location. This process effectively generates a
+new, fully modulated circuit that incorporates the specified modulation behavior, seamlessly embedding dynamic control
+within the audio flow.
 
 \subparagraph{Ondemand}
 
-The ondemand extension in \F{} introduces a powerful mechanism to
-control when computations occur within an audio circuit, adding
-flexibility and efficiency to audio processing. Traditionally, \F{}
-computes signals at every sample, but with ondemand, computations are
-triggered only when a clock signal is active, allowing selective
-processing based on demand. This feature is implemented by adding a
-clock input to the circuit: when the clock is high (1), computations
+The ondemand extension in \F{} introduces a powerful mechanism to control when computations occur within an audio
+circuit, adding flexibility and efficiency to audio processing. Traditionally, \F{} computes signals at every sample,
+but with ondemand, computations are triggered only when a clock signal is active, allowing selective processing based on
+demand. This feature is implemented by adding a clock input to the circuit: when the clock is high (1), computations
 proceed; when it is low (0), they are skipped.
 
-Internally, ondemand leverages downsampling and upsampling techniques to
-manage these on-off states, synchronizing computations with the clock
-signal to maintain timing consistency. The \F{} compiler transforms
-circuits into `gated' versions, where computations activate only as
-needed, significantly optimizing performance by reducing unnecessary
-calculations. This approach is particularly advantageous for large,
-complex synthesizers---common in commercial applications---that offer
-extensive functionalities users can activate or deactivate at will. In
-such cases, ondemand ensures that unused features don't consume CPU or
-energy resources, making \F{} highly efficient for applications that
-demand responsive, resource-conscious performance. Inspired by
-demand-rate operations in SuperCollider, ondemand maintains \F{}'s
-streamlined, sample-based semantics while enabling efficient,
-clock-driven processing within a continuous framework.
+Internally, ondemand leverages downsampling and upsampling techniques to manage these on-off states, synchronizing
+computations with the clock signal to maintain timing consistency. The \F{} compiler transforms circuits into `gated'
+versions, where computations activate only as needed, significantly optimizing performance by reducing unnecessary
+calculations. This approach is particularly advantageous for large, complex synthesizers---common in commercial
+applications---that offer extensive functionalities users can activate or deactivate at will. In such cases, ondemand
+ensures that unused features don't consume CPU or energy resources, making \F{} highly efficient for applications that
+demand responsive, resource-conscious performance. Inspired by demand-rate operations in SuperCollider, ondemand
+maintains \F{}'s streamlined, sample-based semantics while enabling efficient, clock-driven processing within a
+continuous framework.
 
 \subparagraph{Automatic differentiation}
 
-Differentiable Digital Signal Processing (DDSP) \cite{engel2020ddsp} is the application of differentiable programming to audio computations. Coupled with gradient-based optimization methods, differentiable signal processors are central to a variety of audio problems and can be incorporated into machine learning architectures.
+Differentiable Digital Signal Processing (DDSP) \cite{engel2020ddsp} is the application of differentiable programming to
+audio computations. Coupled with gradient-based optimization methods, differentiable signal processors are central to a
+variety of audio problems and can be incorporated into machine learning architectures.
 
-In order to use \F{} for this type of application, we are developing two complementary approaches. The first is to express directly in Faust, using the language's pattern matching rules, the transformation of a Faust circuit into its differentiated version. This approach is presented in \cite{rushton:hal-04849619}. The second approach involves introducing a new differentiation construct into the language itself and implementing this transformation directly in the \F{} compiler. This is the subject of Benjamin Quiedeville's thesis, which began in September 2024.
+In order to use \F{} for this type of application, we are developing two complementary approaches. The first is to
+express directly in Faust, using the language's pattern matching rules, the transformation of a Faust circuit into its
+differentiated version. This approach is presented in \cite{rushton:hal-04849619}. The second approach involves
+introducing a new differentiation construct into the language itself and implementing this transformation directly in
+the \F{} compiler. This is the subject of Benjamin Quiedeville's thesis, which began in September 2024.
 
 
 \paragraph{The \F{} compiler}
 
-To support \F{}'s evolving functionality and optimize performance
-across a wider range of platforms, recent advancements in the \F{}
-compiler---driven in part by the Syfala project---have introduced
-innovative compilation techniques that now target not only CPUs but also
-FPGAs, enabling efficient code generation and dynamic processing
-capabilities on diverse hardware architectures.
+To support \F{}'s evolving functionality and optimize performance across a wider range of platforms, recent advancements
+in the \F{} compiler---driven in part by the Syfala project---have introduced innovative compilation techniques that now
+target not only CPUs but also FPGAs, enabling efficient code generation and dynamic processing capabilities on diverse
+hardware architectures.
 
 \subparagraph{Fixed-point compilation}
 
-Modern digital signal processing often relies on floating-point
-arithmetic for its simplicity and ease of use. However, fixed-point
-number formats can significantly reduce resource usage and improve
-execution times, making them particularly beneficial for FPGA
-implementations. The challenge with fixed-point formats lies in the
-manual effort required to specify formats at each computation step, a
-complex and time-consuming task for programmers. Recent advancements in
-the \F{} compiler address this by introducing an automatic fixed-point
-format determination, a prototype implementation that leverages existing
-methodologies to calculate optimal fixed-point formats automatically.
-This new feature reduces programming overhead while maximizing the
-efficiency of \F{}-generated code on hardware like FPGAs.
+Modern digital signal processing often relies on floating-point arithmetic for its simplicity and ease of use. However,
+fixed-point number formats can significantly reduce resource usage and improve execution times, making them particularly
+beneficial for FPGA implementations. The challenge with fixed-point formats lies in the manual effort required to
+specify formats at each computation step, a complex and time-consuming task for programmers. Recent advancements in the
+\F{} compiler address this by introducing an automatic fixed-point format determination, a prototype implementation that
+leverages existing methodologies to calculate optimal fixed-point formats automatically. This new feature reduces
+programming overhead while maximizing the efficiency of \F{}-generated code on hardware like FPGAs.
 
 \subparagraph{FIR/IIR reconstruction}
 
-Faust's design philosophy deliberately excludes high-level signal processing functions that can be expressed using existing lower-level primitives. Consequently, the language does not provide FIR and IIR filters as direct primitives, but instead includes them in its standard libraries.
+Faust's design philosophy deliberately excludes high-level signal processing functions that can be expressed using
+existing lower-level primitives. Consequently, the language does not provide FIR and IIR filters as direct primitives,
+but instead includes them in its standard libraries.
 
-But, from a code generation perspective, having high-level operations like IIR and FIR filters can be beneficial. For example, this allows loops to appear in the generated code, which is particularly interesting when using high-level synthesis tools like Vivado HLS. Therefore, we introduced new compilation options that automatically reconstruct FIR and IIR filters in the compiler's internal representations. While these options may not necessarily improve CPU performance, they are clearly very efficient on FPGAs in terms of latency and resource trade-offs.
+But, from a code generation perspective, having high-level operations like IIR and FIR filters can be beneficial. For
+example, this allows loops to appear in the generated code, which is particularly interesting when using high-level
+synthesis tools like Vivado HLS. Therefore, we introduced new compilation options that automatically reconstruct FIR and
+IIR filters in the compiler's internal representations. While these options may not necessarily improve CPU performance,
+they are clearly very efficient on FPGAs in terms of latency and resource trade-offs.
 
 \subparagraph{Delay lines}
 
-We have developed new strategies for implementing delay lines, focusing on adapting implementation techniques based on delay length and hardware characteristics. The goal is to optimize memory usage, computational efficiency, and resource allocation across different platforms like CPUs and FPGAs. Our new approach dynamically selects implementation methods, from simple array storage for short delays, to ring buffer techniques for long delays - to maximize performance while minimizing resource overhead.
+We have developed new strategies for implementing delay lines, focusing on adapting implementation techniques based on
+delay length and hardware characteristics. The goal is to optimize memory usage, computational efficiency, and resource
+allocation across different platforms like CPUs and FPGAs. Our new approach dynamically selects implementation methods,
+from simple array storage for short delays, to ring buffer techniques for long delays - to maximize performance while
+minimizing resource overhead.
 
 \subparagraph{Instruction scheduling}
 
-At the intermediate signal level, each Faust program is represented as a directed graph (DG), where nodes correspond to individual signals, and edges represent their dependencies. Multiple topological orderings can satisfy the dependency constraints, but due to memory cache and data locality considerations, not all orderings are equally efficient.
+At the intermediate signal level, each Faust program is represented as a directed graph (DG), where nodes correspond to
+individual signals, and edges represent their dependencies. Multiple topological orderings can satisfy the dependency
+constraints, but due to memory cache and data locality considerations, not all orderings are equally efficient.
 
-We have implemented several new scheduling strategies. Tests reveal that no single strategy consistently outperforms the others. However, the performance impact of the chosen strategy is often highly significant, underscoring the importance of allowing users to select their preferred scheduling method.
+We have implemented several new scheduling strategies. Tests reveal that no single strategy consistently outperforms the
+others. However, the performance impact of the chosen strategy is often highly significant, underscoring the importance
+of allowing users to select their preferred scheduling method.
 
 \subparagraph{Backends}
 
-The \F{} compilation pipeline incorporates an internal imperative
-representation, encompassing memory access operations, mathematical
-functions, and control structures, which enables the generation of code
-in an ever-growing array of target languages through backends.
-Initially, C and C++ backends were developed, followed by an LLVM IR
-backend that, when used with a JIT compiler, enabled a fully embeddable,
-dynamic compilation chain known as libfaust. The addition of a
-WebAssembly backend, utilized in the Web version of libfaust (compiled
-from C++ to WebAssembly and JavaScript via the Emscripten compiler),
-unlocks an entirely new category of use cases.
+The \F{} compilation pipeline incorporates an internal imperative representation, encompassing memory access operations,
+mathematical functions, and control structures, which enables the generation of code in an ever-growing array of target
+languages through backends. Initially, C and C++ backends were developed, followed by an LLVM IR backend that, when used
+with a JIT compiler, enabled a fully embeddable, dynamic compilation chain known as libfaust. The addition of a
+WebAssembly backend, utilized in the Web version of libfaust (compiled from C++ to WebAssembly and JavaScript via the
+Emscripten compiler), unlocks an entirely new category of use cases.
 
 Four new backends have been recently developed:
 
+Here’s the summary reformatted in LaTeX:
+
+
 \begin{itemize}
 \item
-  the JAX backend introduces new opportunities for \F{}, especially in
-  the machine learning domain, by leveraging JAX's high-performance
-  numerical capabilities and automatic differentiation. JAX enhances
-  NumPy by enabling gradient computation and supports JIT compilation
-  for optimized performance. An external contributor in collaboration
-  with GRAME, has developed a JAX backend for \F{}, allowing the
-  creation of differentiable \F{} programs within DawDreamer, an
-  audio-processing Python framework. Initial experiments include Flax
-  examples with a learnable low-pass filter, differentiable
-  synthesizers, and a parametric equalizer in a QDax environment.
+  \textbf{JAX Backend}: A JAX backend for \F{} enables differentiable \F{} programs by leveraging JAX's numerical and
+  automatic differentiation capabilities. It integrates with the DawDreamer audio framework and has been used for
+  experiments like learnable low-pass filters, differentiable synthesizers, and parametric equalizers.
 \item
-  developed by Cockos, the creators of Reaper, JSFX is a scripting
-  language which allows users to extend the capabilities of the DAW with
-  custom audio and MIDI processing scripts adapted to their specific
-  needs. In collaboration with GRAME, an external contributor has
-  developed a backend enabling the creation of synthesizers and effects
-  with MIDI control, as well as polyphonic MIDI-controllable audio
-  plugins generated in JSFX to be loaded and executed in Reaper
-  seamlessly.
+  \textbf{JSFX Integration}: A backend for JSFX, the scripting language by Cockos (creators of Reaper), allows \F{} to
+  generate custom audio and MIDI effects. These plugins, including polyphonic MIDI-controllable ones, are seamlessly
+  usable within Reaper.
 \item
-  Cmajor is a C like procedural high-performance language specifically
-  designed for audio processing providing a runtime with dynamic LLVM
-  JIT based compilation. The language supports a signal flow through a
-  graph structure with processor nodes containing implementations of
-  specific DSP building blocks. A Cmajor backend has been written to
-  generate a processor from a \F{} DSP program. Parameters such as
-  sliders, buttons, and bar graphs correspond to Cmajor's concept of
-  input and output events.
+  \textbf{Cmajor Backend}: A Cmajor backend generates high-performance processors from \F{} programs. This backend maps
+  \F{}'s parameters (e.g., sliders, buttons) to Cmajor's input and output events, utilizing Cmajor's dynamic LLVM JIT
+  compilation for optimized audio processing.
 \item
-  RNBO is a library and toolchain that exports Max-like patches as
-  portable code, compilable to targets such as VST, Max externals, or
-  Raspberry Pi. \F{} programs can be compiled to RNBO's internal
-  codebox\textasciitilde{} language, generating sections for parameter
-  definitions, DSP state, initialization, and compute functions. The
-  \texttt{faust2rnbo} tool converts \F{} DSP programs into RNBO patches
-  containing a rnbo\textasciitilde{} object with embedded codebox code
-  as a subpatch, automatically setting up audio I/O and parameters. The
-  Python-based script, utilizing py2max, supports DSP and polyphonic
-  MIDI-controllable programs, with a tutorial available.
+  \textbf{RNBO Compatibility}: The \texttt{faust2rnbo} tool converts \F{} programs into RNBO patches, enabling
+  compilation to platforms like VST, Max externals, and Raspberry Pi. It supports audio I/O and parameters, with
+  polyphonic MIDI support and an accompanying tutorial.
 \end{itemize}
 
 
 \paragraph{The \F{} ecosystem}
 
-The \F{} ecosystem includes the compiler which generates optimized code
-formats for various platforms. It offers extensive libraries for audio
-processing, synthesis, and effects, alongside development tools like the
-\F{} Web IDE to write and test code in real time. \F{} architecture
-files enable integration into a wide range of audio environments,
-supporting plugins, standalone applications, and web deployment.
-Activation across these platforms is streamlined with a comprehensive
-suite of \texttt{faust2target} scripts, customized for diverse
-deployment needs.
+Beyond the \F{} compiler, there exists a comprehensive ecosystem of complementary tools and resources. This includes
+extensive libraries for audio processing, synthesis, and effects, as well as development tools like the \F{} Web IDE,
+enabling real-time code writing and testing. The ecosystem also features \F{} architecture files, facilitating seamless
+integration into diverse audio environments such as plugins, standalone applications, and web platforms. Deployment is
+further simplified with the \texttt{faust2target} suite, providing tailored scripts for a wide range of use cases.
 
 \subparagraph{\F{} and the WebAudio platform}
 
-Recent advancements in \F{} language support on the Web platform
-include:
+Recent advancements in \F{} language support on the Web platform include:
 
 \begin{itemize}
 \item
-  the \F{}Wasm library which offers a high-level API for compiling
-  \F{} DSP code into WebAssembly, compatible with both Node.js and web
-  browsers. It enables use as WebAudio nodes in a standard WebAudio node
-  graph and supports offline rendering. The library also facilitates SVG
-  generation from \F{} programs and supports mono and polyphonic nodes
-  with MIDI and sensor integration for use on mobile platforms
-  (slartphones and tablets). The \F{} IDE, Editor, and Playground have
-  been updated to use this new \F{}Wasm package, enhancing usability
-  and tools for \F{} development.
+  the \F{}Wasm library which offers a high-level API for compiling \F{} DSP code into WebAssembly, compatible with both
+  Node.js and web browsers. It enables use as WebAudio nodes in a standard WebAudio node graph and supports offline
+  rendering. The library also facilitates SVG generation from \F{} programs and supports mono and polyphonic nodes with
+  MIDI and sensor integration for use on mobile platforms (slartphones and tablets). The \F{} IDE, Editor, and
+  Playground have been updated to use this new \F{}Wasm package, enhancing usability and tools for \F{} development.
 \item
-  the \texttt{faust-web-component} package which offers two web
-  components for embedding interactive \F{} code directly into web
-  pages. These components include an editor with a graphical user
-  interface, access to controls, and an SVG diagram renderer for
-  visualizing DSP structures.
+  the \texttt{faust-web-component} package which offers two web components for embedding interactive \F{} code directly
+  into web pages. These components include an editor with a graphical user interface, access to controls, and an SVG
+  diagram renderer for visualizing DSP structures.
 \item
-  a standard for Web Audio plugins and DAWs, WAM 2.0, released in 2021,
-  provides an SDK, API, plugins, and hosts to support diverse
-  development workflows. \F{}-compatible WAM plugins can be created
-  using the \F{} IDE with adapted targets.
+  a standard for Web Audio plugins and DAWs, WAM 2.0, released in 2021, provides an SDK, API, plugins, and hosts to
+  support diverse development workflows. \F{}-compatible WAM plugins can be created using the \F{} IDE with adapted
+  targets.
 \end{itemize}
 
 \subparagraph{\F{}2Eurorack}
 
-The integration of \F{} with Eurorack-blocks has been done.
-Eurorack-blocks is a framework capable of programmatically generating
-Eurorack digital modules' hardware and firmware files for manufacturing,
-and providing a virtual environment for early-stage design, development,
-testing and debugging iterations on a desktop computer. It presents a
-method to statically bind the inherently nested structure of a \F{} DSP
-program with the flat namespace and different types of the ERBUI and
-ERBB languages, which are Domain Specific Languages to describe the
-Eurorack module UI, module DSP file and associated audio data,
-respectively. An implementation is demonstrated, taking into
-consideration the specific memory model of the hardware embedded
-platform, as well as the meta-programming technique used to minimize
-computations done at run time by relocating them at build time.
+The integration of \F{} with Eurorack-blocks has been done. Eurorack-blocks is a framework capable of programmatically
+generating Eurorack digital modules' hardware and firmware files for manufacturing, and providing a virtual environment
+for early-stage design, development, testing and debugging iterations on a desktop computer. It presents a method to
+statically bind the inherently nested structure of a \F{} DSP program with the flat namespace and different types of the
+ERBUI and ERBB languages, which are Domain Specific Languages to describe the Eurorack module UI, module DSP file and
+associated audio data, respectively. An implementation is demonstrated, taking into consideration the specific memory
+model of the hardware embedded platform, as well as the meta-programming technique used to minimize computations done at
+run time by relocating them at build time.
